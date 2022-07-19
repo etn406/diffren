@@ -1,76 +1,121 @@
-use std::path::PathBuf;
-use clap::{Parser, Subcommand};
-
-mod ren;
-use ren::rename_command;
-
-const DEFAULT_RENAMINGS_FILE: &str = "_renamings.yml";
+use clap::Parser;
+use colored::Colorize;
+use edit::PathChange;
+use glob::glob;
+use std::{fs, path::PathBuf, process::ExitCode};
+mod edit;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// YAML file listing all the paths to rename.
-    /// 
-    /// Each line of the file must be a pair `key: value`,
-    /// where the key is the path to rename from, and the value is the path to rename to.
-    /// Defaults to "_renamings.yml".
-    #[clap(parse(from_os_str))]
-    input_renamings_file: Option<PathBuf>,
-
-    /// Just verify that each renaming is possible but do not actually rename anything.
-    #[clap(short, long, action, default_value_t = false)]
-    dry_run: bool,
-
-    /// Read each renaming from the input file in reverse, so the value becomes the path to rename from,
-    /// and the key becomes the path to rename to.
-    #[clap(long, action, default_value_t = false)]
-    revert: bool,
-
-    #[clap(subcommand)]
-    commands: Option<Commands>,
+    /// Path(s) of the files to list.
+    /// Unix shell style patterns are supported, for example "mymusic/**/*.mp3".
+    /// Defaults to all the files in the current directory.
+    #[clap(value_parser)]
+    paths: Vec<String>,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Generates a YAML file listing all the files in a directory.
-    Generate {
-        /// Path of the files to list.
-        /// Defaults to the current directory.
-        #[clap(parse(from_os_str))]
-        from_path: Option<PathBuf>,
-
-        /// YAML file into which write the files list.
-        /// Defaults to "_renamings.yml".
-        #[clap(parse(from_os_str))]
-        output_renamings_file: Option<PathBuf>,
-    },
+fn main() -> ExitCode {
+    match exec() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(message) => {
+            println!("{}", message.bright_red());
+            ExitCode::FAILURE
+        }
+    }
 }
 
-fn main() {
+fn exec() -> Result<(), String> {
     let args = Args::parse();
 
-    match args.commands {
-        Some(command) => match command {
-            Commands::Generate {output_renamings_file: renamings_file, from_path} => {
-                generate_command(
-                    renamings_file.unwrap_or(PathBuf::from(DEFAULT_RENAMINGS_FILE)),
-                    from_path.unwrap_or(PathBuf::from(".")),
-                )
-            }
-        },
+    let paths = args.paths;
 
-        // Default command
-        None => {
-            rename_command(
-                args.input_renamings_file.unwrap_or(PathBuf::from(DEFAULT_RENAMINGS_FILE)),
-                args.dry_run,
-                args.revert
-            )
-        },
+    // Default to "*" all files in the current directory
+    let paths = if paths.len() == 0 {
+        vec!["*".to_string()]
+    } else {
+        paths
     };
 
+    let paths = unwrap_paths_patterns(paths);
+
+    let temp = edit::init_temp_files(paths.join("\n"));
+
+    loop {
+        match edit::ask_user_for_changes(&temp) {
+            edit::NextAction::Confirm(changes) => {
+                rename_paths_and_display(changes);
+                break;
+            }
+            edit::NextAction::Edit => continue,
+            edit::NextAction::Exit => {
+                println!("\nExiting...");
+                break;
+            }
+        }
+    }
+
+    edit::clean_temp_files(temp);
+
+    Ok(())
 }
 
-fn generate_command(renamings_file: PathBuf, from_path: PathBuf) {
-    println!("Gen {:?} from {:?}", renamings_file, from_path)
+/// Transforms a vector of paths patterns to the corresponding paths list.
+fn unwrap_paths_patterns(paths: Vec<String>) -> Vec<String> {
+    let mut files_paths = vec![];
+
+    for path in paths {
+        let is_pattern = path.contains('?') | path.contains('*') | path.contains("**");
+
+        if is_pattern {
+            let parsed_paths = glob(path.as_str()).expect("Failed to read pattern");
+
+            for file in parsed_paths {
+                match file {
+                    Ok(path) => match path.to_str() {
+                        Some(path) => files_paths.push(path.to_string()),
+                        None => {
+                            println!("Couldn't convert to string {}", format!("{:?}", path).red());
+                        }
+                    },
+                    Err(e) => println!("{}", format!("{:?}", e).red()),
+                }
+            }
+        } else {
+            files_paths.push(path);
+        }
+    }
+
+    files_paths.sort();
+    files_paths.dedup();
+
+    files_paths
+}
+
+fn rename_paths_and_display(changes: Vec<PathChange>) {
+    let to_str = |p: PathBuf| p.to_str().unwrap_or("?").normal();
+
+    edit::display_table(
+        changes
+            .into_iter()
+            .map(|(current, target)| match rename_path(&current, &target) {
+                Ok(()) => [to_str(current), to_str(target), "✓ Renamed".green()],
+                Err(e) => [to_str(current), to_str(target), format!("✗ {}", e).red()],
+            })
+            .collect(),
+        "→",
+    );
+}
+
+fn rename_path(current: &PathBuf, target: &PathBuf) -> std::io::Result<()> {
+    let path_to_target = target.parent();
+
+    if path_to_target.is_some() {
+        let path_to_target = path_to_target.unwrap();
+        std::fs::create_dir_all(path_to_target)?;
+    }
+
+    fs::rename(&current, &target)?;
+
+    Ok(())
 }
