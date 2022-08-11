@@ -9,8 +9,8 @@ mod edit;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// Path(s) of the files to list.
-    /// Unix shell style patterns are supported, for example "mymusic/**/*.mp3".
-    /// Defaults to all the files in the current directory.
+    /// Unix shell style patterns are supported.
+    /// Defaults to `*`.
     #[clap(value_parser)]
     paths: Vec<String>,
 }

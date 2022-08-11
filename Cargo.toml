@@ -2,6 +2,13 @@
 name = "diffren"
 version = "0.2.0"
 edition = "2021"
+authors = ["Etn <etn406@gmail.com>"]
+license = "MIT"
+description = "A tool to rename files using a diff editor"
+readme = "README.md"
+homepage = "https://github.com/etn406/diffren"
+repository = "https://github.com/etn406/diffren"
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "3.2", features = ["derive"] }
