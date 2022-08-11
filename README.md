@@ -1,4 +1,4 @@
-# etn's massren
+# diffren: rename paths in a diff view
 
 Tool to rename lots of files and folders using a text editor with a "diff" view to compare currents and targets paths. For now it only works with VSCode but I plan to add the support of others/custom text editors.
 
