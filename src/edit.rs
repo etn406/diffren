@@ -61,7 +61,7 @@ pub fn ask_user_for_changes(temp: &TempEditingFiles) -> NextAction {
     let input_lines = read_paths_from_file(&temp.input);
     let output_lines = read_paths_from_file(&temp.output);
 
-    match vecs_to_paths_transformations(input_lines, output_lines) {
+    match combine_files(input_lines, output_lines) {
         Ok(changes) => {
             let (changes, changes_count, error_count) = check_paths(changes);
 
@@ -252,21 +252,12 @@ fn check_uniqueness_of_output_path(
     }
 }
 
-fn vecs_to_paths_transformations(
-    vec1: Vec<PathBuf>,
-    vec2: Vec<PathBuf>,
-) -> Result<Vec<PathChange>, String> {
-    if vec1.len() != vec2.len() {
+fn combine_files(current: Vec<PathBuf>, target: Vec<PathBuf>) -> Result<Vec<PathChange>, String> {
+    if current.len() != target.len() {
         return Err("The two files do not have the same number of lines.".to_string());
     }
 
-    let mut trans = Vec::with_capacity(vec1.len());
-
-    for (input, output) in vec1.into_iter().zip(vec2.into_iter()) {
-        trans.push((input, output));
-    }
-
-    Ok(trans)
+    Ok(Vec::from_iter(current.into_iter().zip(target.into_iter())))
 }
 
 /// Filter and only keeps valid changes.
