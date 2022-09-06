@@ -58,7 +58,7 @@ fn exec() -> Result<(), String> {
         match ask_user_for_changes(&temp) {
             NextAction::Confirm(renamings) => {
                 let results = apply_renamings(renamings);
-                display_results(results);
+                display_results(&results);
                 break;
             }
             NextAction::Edit => continue,
