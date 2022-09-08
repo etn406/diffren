@@ -1,12 +1,11 @@
-use colored::Colorize;
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::Select;
-use std::process::Command;
-
+use crate::config;
 use crate::display::display_validations;
 use crate::filesystem::TempEditingFiles;
 use crate::validation;
 use crate::*;
+use colored::Colorize;
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Select;
 
 /// Next action to perform :
 pub enum NextAction {
@@ -107,12 +106,7 @@ fn ask_user_to_continue(changes: Vec<Renaming>, changes_count: u32) -> NextActio
 
 /// Starts the editor and waits for it to be closed.
 fn start_editor_and_wait(files: &TempEditingFiles) {
-    let mut edit_cmd = Command::new("code");
-    edit_cmd
-        .arg("--wait")
-        .arg("--diff")
-        .arg(files.current.clone())
-        .arg(files.target.clone());
+    let mut edit_cmd = config::get_editor_command(files);
 
     let mut child = edit_cmd
         .spawn()

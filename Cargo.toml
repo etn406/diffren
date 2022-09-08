@@ -16,3 +16,5 @@ colored = "2.0"
 glob = "0.3"
 tempfile = "3.3"
 dialoguer = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+preferences = { git = "https://github.com/etn406/preferences-rs", branch = "main", version = "2.1" }
