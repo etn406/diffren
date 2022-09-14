@@ -52,8 +52,8 @@ pub fn read_config() -> Result<DiffrenConfig, String> {
 
 /// Save the custom editor launch command.
 pub fn set_custom_editor_command(command: &String) -> Result<(), String> {
-    if !command.contains("{target_file}") {
-        return Err("The command doesn't contain `{target_file}`.".to_string());
+    if !command.contains("{target}") {
+        return Err("The command doesn't contain `{target}`.".to_string());
     }
 
     let mut config = read_config().unwrap_or_default();
@@ -62,7 +62,7 @@ pub fn set_custom_editor_command(command: &String) -> Result<(), String> {
     match save_config(&config) {
         Ok(()) => {
             println!("The custom editor launch command has been set with:");
-            println!("> {}", config.custom_editor.bright_black());
+            println!("  > {}", config.custom_editor.bright_black());
             Ok(())
         }
         Err(err) => Err(err),
