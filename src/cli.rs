@@ -3,19 +3,21 @@ use clap::Parser;
 use crate::config::TextEditor;
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(name="diffren", author, version, about, long_about = None)]
 pub struct Args {
-    /// Path(s) of the files to list.
-    /// Unix shell style patterns are supported.
-    #[clap(value_parser)]
-    pub paths: Vec<String>,
-
     #[clap(subcommand)]
     pub command: Option<Subcommand>,
 }
 
 #[derive(clap::Subcommand)]
 pub enum Subcommand {
+    Run {
+        /// Path(s) of the files to list.
+        /// Unix shell style patterns are supported.
+        #[clap(value_parser)]
+        paths: Vec<String>,
+    },
+
     GetConfig,
 
     /// Displays the current command use to start
